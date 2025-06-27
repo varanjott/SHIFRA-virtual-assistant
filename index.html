@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant | Powered by Gemini</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="light-mode">
+    <!-- Splash Screen -->
+    <div class="splash-screen" id="splash-screen">
+        <div class="splash-content">
+            <div class="logo-container">
+                <div class="logo">
+                    <i class="fas fa-robot"></i>
+                </div>
+            </div>
+            <h1>AI Assistant</h1>
+            <p>Powered by Gemini</p>
+            <div class="loading-bar">
+                <div class="loading-progress"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Chat Interface -->
+    <div class="chat-container" id="chat-container">
+        <header class="chat-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <div class="brand-logo">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="brand-info">
+                        <h1>AI Assistant</h1>
+                        <span class="brand-tagline">Powered by Gemini</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <button id="theme-toggle" class="icon-button" title="Toggle Theme">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <button id="settings-button" class="icon-button" title="Settings">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="chat-messages" id="chat-messages">
+            <div class="message bot-message">
+                <div class="message-content">
+                    <p>Hello! I'm your AI assistant powered by Gemini. How can I help you today? 👋</p>
+                </div>
+                <div class="message-info">
+                    <span class="timestamp">Just now</span>
+                    <button class="copy-button" title="Copy to clipboard">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <div class="typing-indicator" id="typing-indicator">
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <span>AI is thinking...</span>
+        </div>
+
+        <footer class="chat-input">
+            <div class="input-wrapper">
+                <div class="input-container">
+                    <button id="voice-input-button" class="input-action-button" title="Voice Input">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                    <textarea id="user-input" placeholder="Type your message here..." rows="1"></textarea>
+                    <div class="input-actions">
+                        <button id="image-upload-button" class="input-action-button" title="Upload Image">
+                            <i class="fas fa-image"></i>
+                        </button>
+                        <button id="send-button" class="send-button" title="Send Message">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+                <input type="file" id="image-upload" accept="image/*" style="display: none;">
+            </div>
+            <div id="image-preview-container" class="image-preview-container hidden">
+                <div class="image-preview-header">
+                    <span>Image Preview</span>
+                    <button id="remove-image" class="icon-button" title="Remove Image">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="image-preview-content">
+                    <img id="image-preview" src="#" alt="Preview">
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Settings Drawer -->
+    <div class="settings-drawer" id="settings-drawer">
+        <div class="settings-header">
+            <h2>Settings</h2>
+            <button id="close-settings" class="icon-button">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="settings-content">
+            <div class="setting-item">
+                <span>Dark Mode</span>
+                <label class="switch">
+                    <input type="checkbox" id="theme-switch">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <div class="setting-item">
+                <span>Sound Effects</span>
+                <label class="switch">
+                    <input type="checkbox" id="sound-switch" checked>
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <div class="setting-item">
+                <span>API Key</span>
+                <input type="password" id="api-key-input" placeholder="Enter your Gemini API Key">
+            </div>
+            <button id="clear-chat" class="settings-button">
+                <i class="fas fa-trash"></i> Clear Chat History
+            </button>
+            <div class="settings-footer">
+                <p>AI Assistant v1.0</p>
+                <p>Powered by Gemini API</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay -->
+    <div class="overlay" id="overlay"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
