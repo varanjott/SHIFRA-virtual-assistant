@@ -1,6 +1,6 @@
 // DOM Elements
-const splashScreen = document.getElementById("splash-screen")
-const chatContainer = document.getElementById("chat-container")
+const splashScreen = document.getElementById("splash-screen") //  to hide the intro splash after 2.5s.
+const chatContainer = document.getElementById("chat-container") // to show/hide chat UI.
 const chatMessages = document.getElementById("chat-messages")
 const userInput = document.getElementById("user-input")
 const sendButton = document.getElementById("send-button")
@@ -23,16 +23,16 @@ const soundSwitch = document.getElementById("sound-switch")
 
 // State variables
 let darkMode = false
-let currentUploadedImage = null
-let recognition = null
-let isListening = false
-let apiKey = localStorage.getItem("gemini-api-key") || ""
+let currentUploadedImage = null // stores uploaded image so it can be sent to API.
+let recognition = null //speech recognition object (for voice input).
+let isListening = false //  whether microphone is actively recording.
+let apiKey = localStorage.getItem("gemini-api-key") || ""//saved API key (from localStorage so it persists even after refresh).
 let soundEnabled = localStorage.getItem("sound-enabled") !== "false"
 
 // Initialize the app
 document.addEventListener("DOMContentLoaded", () => {
   // Load saved settings
-  loadSettings()
+  loadSettings() //Loads saved preferences (dark mode, API key, sound).
 
   // Show splash screen for 2.5 seconds
   setTimeout(() => {
@@ -52,6 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Auto-resize textarea
   userInput.addEventListener("input", autoResizeTextarea)
 })
+
 //Converts an uploaded image into a Base64 string so it can be sent to the API.
 function toBase64(imageDataUrl) {
   return new Promise((resolve, reject) => {
@@ -72,6 +73,7 @@ function toBase64(imageDataUrl) {
     }
   });
 }
+
 // Load settings from localStorage
 function loadSettings() {
   // Load theme preference
@@ -92,7 +94,7 @@ function loadSettings() {
   soundSwitch.checked = soundEnabled
 }
 
-// Set up event listeners
+// Set up event listeners Central place where all UI event bindings are set up.
 function setupEventListeners() {
   // Send message on button click
   sendButton.addEventListener("click", sendMessage)
@@ -141,67 +143,74 @@ function setupEventListeners() {
 }
 
 // Send message function
-function sendMessage() {
+async function sendMessage() {
   const message = userInput.value.trim()
+  const hasImage = currentUploadedImage !== null
 
-  // Don't send empty messages unless there's an image
-  if (!message && !currentUploadedImage) return
+  if (!message && !hasImage) {
+    showNotification("Please enter a message or upload an image")
+    return
+  }
 
   // Add user message to chat
-  addMessageToChat("user", message, currentUploadedImage)
+  if (hasImage) {
+    addMessageToChat("user", message || "Uploaded an image", currentUploadedImage)
+  } else {
+    addMessageToChat("user", message)
+  }
 
-  // Clear input
+  // Clear input and image
   userInput.value = ""
-  autoResizeTextarea()
+  const imageToProcess = currentUploadedImage
+  removeUploadedImage()
 
   // Show typing indicator
-  typingIndicator.classList.add("visible")
-
-  // Process with Gemini API
-  processWithGemini(message, currentUploadedImage)
-    .then((response) => {
-      // Hide typing indicator
-      typingIndicator.classList.remove("visible")
-
-      // Add bot response to chat
-      addMessageToChat("bot", response)
-
-      // Play sound if enabled
-      if (soundEnabled) {
-        playSound("message-received")
-      }
-    })
-    .catch((error) => {
-      console.error("Error:", error)
-      typingIndicator.classList.remove("visible")
-      addMessageToChat("bot", "Sorry, I encountered an error. Please try again or check your API key.")
-    })
-
-  // Remove uploaded image after sending
-  if (currentUploadedImage) {
-    removeUploadedImage()
-  }
+  showTypingIndicator()
 
   // Play sound if enabled
   if (soundEnabled) {
-    playSound("message-sent")
-  }
-}
-
-// Process message with Gemini API
-const GEMINI_API_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
-
-async function processWithGemini(message, image = null) {
-  if (!apiKey) {
-    return "Please set your Gemini API key in the settings to continue.";
+    playSound("send")
   }
 
   try {
-    const url = `${GEMINI_API_ENDPOINT}?key=${apiKey}`;
+    // Get AI response
+    const response = await processWithGemini(message, imageToProcess)
+
+    // Hide typing indicator
+    hideTypingIndicator()
+
+    // Add AI response to chat
+    addMessageToChat("bot", response)
+
+    // Play sound if enabled
+    if (soundEnabled) {
+      playSound("receive")
+    }
+  } catch (error) {
+    hideTypingIndicator()
+    addMessageToChat("bot", "Sorry, I encountered an error. Please try again.")
+    console.error("Send message error:", error)
+  }
+
+  // Auto-resize textarea
+  autoResizeTextarea()
+}
+
+// Process message with Gemini API
+const GEMINI_API_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+
+async function processWithGemini(message, image = null) {
+  if (!apiKey) {
+    return "Please set your Gemini API key in the settings to continue."
+  }
+
+  try {
+    const url = `${GEMINI_API_ENDPOINT}?key=${apiKey}`
 
     // If image is present
     if (image) {
-      const base64Image = await toBase64(image);
+      // Convert data URL to base64 (remove data:image/jpeg;base64, prefix)
+      const base64Image = image.split(",")[1]
 
       const body = {
         contents: [
@@ -209,28 +218,38 @@ async function processWithGemini(message, image = null) {
             parts: [
               {
                 inline_data: {
-                  mime_type: image.type,
+                  mime_type: "image/jpeg", // Default to jpeg, could be improved to detect actual type
                   data: base64Image,
                 },
               },
               {
-                text: message || "Please describe the image.",
+                text: message || "Please describe this image in detail.",
               },
             ],
           },
         ],
-      };
-
+      }
+      
+// This sends a POST request to Gemini with:
       const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(body),
-      });
+      })
 
-      const data = await response.json();
-      return data?.candidates?.[0]?.content?.parts?.[0]?.text || "Gemini could not respond to the image.";
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      if (data.error) {
+        throw new Error(data.error.message || "API Error")
+      }
+
+      return data?.candidates?.[0]?.content?.parts?.[0]?.text || "I couldn't analyze this image. Please try again."
     }
 
     // For text only
@@ -244,7 +263,7 @@ async function processWithGemini(message, image = null) {
           ],
         },
       ],
-    };
+    }
 
     const response = await fetch(url, {
       method: "POST",
@@ -252,45 +271,23 @@ async function processWithGemini(message, image = null) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
-    });
+    })
 
-    const data = await response.json();
-    return data?.candidates?.[0]?.content?.parts?.[0]?.text || "Gemini returned no response.";
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status}`)
+    }
+
+    const data = await response.json()
+
+    if (data.error) {
+      throw new Error(data.error.message || "API Error")
+    }
+
+    return data?.candidates?.[0]?.content?.parts?.[0]?.text || "I couldn't generate a response. Please try again."
   } catch (error) {
-    console.error("Gemini API Error:", error);
-    return "An error occurred while connecting to Gemini API.";
+    console.error("Error processing with Gemini:", error)
+    return `Error: ${error.message}. Please check your API key and try again.`
   }
-}
-// Simulate response for demo purposes
-function simulateResponse(message) {
-  const responses = [
-    "I understand you're asking about " + message + ". That's an interesting topic! Here's what I know...",
-    "Thanks for your message! Based on what you've asked, I'd suggest...",
-    "Great question! Let me provide some information about " + message + "...",
-    "I've processed your request about '" + message + "'. Here's my response...",
-    "I'm happy to help with your question about " + message + ". Here's what I can tell you...",
-  ]
-
-  return (
-    responses[Math.floor(Math.random() * responses.length)] +
-    " This is a simulated response. In a real implementation, this would be replaced with the actual response from the Gemini API."
-  )
-}
-
-// Simulate image analysis response
-function simulateImageAnalysisResponse() {
-  const responses = [
-    "It appears to be an image containing some interesting elements. I can see various objects and colors.",
-    "This image shows what looks like a scene with several details that I can analyze further if you'd like.",
-    "I've analyzed the visual content of this image and can identify several key components.",
-    "The image you've shared contains visual information that I can describe in detail.",
-    "Based on my analysis, this image depicts a scene with various elements worth noting.",
-  ]
-
-  return (
-    responses[Math.floor(Math.random() * responses.length)] +
-    " This is a simulated image analysis. In a real implementation, this would be replaced with the actual analysis from the Gemini API."
-  )
 }
 
 // Add message to chat
@@ -499,7 +496,7 @@ function handleImageUpload(event) {
 
   // Check if file is an image
   if (!file.type.match("image.*")) {
-    showNotification("Please select an image file")
+    showNotification("Please select an image file (JPG, PNG, GIF, WebP)")
     return
   }
 
@@ -525,6 +522,12 @@ function handleImageUpload(event) {
     if (soundEnabled) {
       playSound("image-upload")
     }
+
+    showNotification("Image uploaded successfully! You can now send it with your message.")
+  }
+
+  reader.onerror = () => {
+    showNotification("Error reading the image file. Please try again.")
   }
 
   reader.readAsDataURL(file)
@@ -566,14 +569,14 @@ function playSound(type) {
   gainNode.connect(audioContext.destination)
 
   switch (type) {
-    case "message-sent":
+    case "send":
       oscillator.type = "sine"
       oscillator.frequency.value = 800
       gainNode.gain.value = 0.1
       oscillator.start()
       oscillator.stop(audioContext.currentTime + 0.1)
       break
-    case "message-received":
+    case "receive":
       oscillator.type = "sine"
       oscillator.frequency.value = 600
       gainNode.gain.value = 0.1
@@ -609,4 +612,14 @@ function playSound(type) {
       oscillator.stop(audioContext.currentTime + 0.15)
       break
   }
+}
+
+// Show typing indicator
+function showTypingIndicator() {
+  typingIndicator.classList.add("visible")
+}
+
+// Hide typing indicator
+function hideTypingIndicator() {
+  typingIndicator.classList.remove("visible")
 }
