@@ -52,7 +52,26 @@ document.addEventListener("DOMContentLoaded", () => {
   // Auto-resize textarea
   userInput.addEventListener("input", autoResizeTextarea)
 })
-
+//Converts an uploaded image into a Base64 string so it can be sent to the API.
+function toBase64(imageDataUrl) {
+  return new Promise((resolve, reject) => {
+    if (typeof imageDataUrl === "string") {
+      // If already a Data URL, strip the prefix
+      const base64 = imageDataUrl.split(",")[1];
+      resolve(base64);
+    } else if (imageDataUrl instanceof File) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result.split(",")[1];
+        resolve(base64);
+      };
+      reader.onerror = (error) => reject(error);
+      reader.readAsDataURL(imageDataUrl);
+    } else {
+      reject("Unsupported image type");
+    }
+  });
+}
 // Load settings from localStorage
 function loadSettings() {
   // Load theme preference
